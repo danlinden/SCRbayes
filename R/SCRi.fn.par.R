@@ -15,7 +15,10 @@ Xd<- scrobj$Xd
 ## EDF: session, individual, occasion, trapID
 ## Now we assume EDF as input and need to reorganize to the old format so the rest of the code works
 
-captures<- cbind(captures[,4],captures[,2],captures[,3])
+if( sum(names(captures) == c("trapid","individual","occasion")) != 3){
+  stop("Capture history must be named: trapid, individual, occasion!")
+}
+#captures<- cbind(captures[,4],captures[,2],captures[,3])
 
 
 
