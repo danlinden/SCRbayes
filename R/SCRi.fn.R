@@ -262,7 +262,8 @@ centers<-c(centers1,centers2)
 S<-G[centers,]   # initial locations for all M individuals
 
 if(Msexsigma==0){
-bsigma <- rbeta(1,1,40)}
+bsigma <- rbeta(1,1,40)
+}
 if(Msexsigma==1){
 bsigmainit <- rbeta(1,1,50)
 bsigma <- c(bsigmainit,bsigmainit)
