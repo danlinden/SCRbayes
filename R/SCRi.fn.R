@@ -272,8 +272,8 @@ if(is.na(theta)){
      theta<- .75
      update.theta<-TRUE
  }
-
-loglam0<-log(.018)
+lam0 <- rgamma(1,0.15,scale=1)
+loglam0 <- log(lam0)
 beta.behave<-0
 beta.sex<-0
 # start beta1=0 so if there's no covariate this parameter is zeroed out
@@ -373,11 +373,11 @@ if(update.theta){
 lp<-   loglam0 + Mb*beta.behave*prevcap - lp.sigma + beta1*Xeff + Msex*beta.sex*Xsex[indid]
 thetac<-rnorm(1,theta,.02)
 # theta must be  between exponential (.5) and gaussian (1)
-if(thetac>=0.5 & thetac<=1){
-if(Msexsigma==0)
-lp.sigmac<-Msigma*bsigma*(c1+c2)^thetac
-if(Msexsigma==1)
-lp.sigmac<-bsigma[Xsex[indid]+1]*(c1 + c2)^thetac
+while(thetac<0.5 | thetac>1) {thetac<-rnorm(1,theta,.02)} 	
+ if(Msexsigma==0)
+  lp.sigmac<-Msigma*bsigma*(c1+c2)^thetac
+ if(Msexsigma==1)
+  lp.sigmac<-bsigma[Xsex[indid]+1]*(c1 + c2)^thetac
 
 lpc<-  loglam0 + Mb*beta.behave*prevcap - lp.sigmac + beta1*Xeff  + Msex*beta.sex*Xsex[indid]
 llvector<-lik.fn(lp,y1)
