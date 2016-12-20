@@ -261,11 +261,12 @@ centers2<-sample(1:nG,M-nind,replace=TRUE, prob=ss.prob)
 centers<-c(centers1,centers2)
 S<-G[centers,]   # initial locations for all M individuals
 
-if(Msexsigma==0)
-bsigma<- 1
-if(Msexsigma==1)
-bsigma <-c(3,3)
-
+if(Msexsigma==0){
+bsigma <- rbeta(1,1,40)}
+if(Msexsigma==1){
+bsigmainit <- rbeta(1,1,50)
+bsigma <- c(bsigmainit,bsigmainit)
+}
 update.theta<-FALSE
 if(is.na(theta)){
      theta<- .75
