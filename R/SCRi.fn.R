@@ -372,6 +372,7 @@ if(runif(1)< exp(sum(( (LM1[z==1,]-LM2[z==1,])%*%ones)))){
 ## update theta
 if(update.theta){
 lp<-   loglam0 + Mb*beta.behave*prevcap - lp.sigma + beta1*Xeff + Msex*beta.sex*Xsex[indid]
+repeat{
 thetac<-rnorm(1,theta,.02)
 # theta must be  between exponential (.5) and gaussian (1)
 while(thetac<0.5 | thetac>1) {thetac<-rnorm(1,theta,.02)} 	
@@ -383,6 +384,8 @@ while(thetac<0.5 | thetac>1) {thetac<-rnorm(1,theta,.02)}
 lpc<-  loglam0 + Mb*beta.behave*prevcap - lp.sigmac + beta1*Xeff  + Msex*beta.sex*Xsex[indid]
 llvector<-lik.fn(lp,y1)
 llvector.new<-lik.fn(lpc,y1)
+if(length(llvector.new[!is.finite(llvector.new)])<1) break
+}
 #LM1[1:length(LM1)]<-llvector.new
 #LM2[1:length(LM2)]<- llvector
 # Robin Russell
@@ -397,7 +400,7 @@ if(runif(1)< exp(sum(( (LM1[z==1,]-LM2[z==1,])%*%ones)))){
  lp<-lpc
  LM2<-LM1
 }
-}
+
 
 }
 
