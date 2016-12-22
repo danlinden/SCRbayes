@@ -740,8 +740,9 @@ Sout[m,]<- centers
 LLout[m,]<- c(sum(logmu.array), n.nolik)#prod(c(mu.array))
 out[m,]<-c(bsigmatmp[1],sigmatmp[1],bsigmatmp[2],sigmatmp[2],
 lam0, beta.behave, beta1,beta.sex,psi,psi.sex,sum(z),theta,beta.den,density)
-print(out[m,])
+
 if(m%%dumprate==0){
+print(out[m,])
 #write a file here not implemented yet
 }
 m<-m+1
