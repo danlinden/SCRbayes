@@ -571,6 +571,7 @@ prior.curr<-(psi.sex^Xsex)*((1-psi.sex)^(1-Xsex))
 prior.cand<-(psi.sex^tmp.sex)*((1-psi.sex)^(1-tmp.sex))
 
 swtch<- sex.naflag & (runif(M,0,1)< ( (lik.othersex*prior.cand)/(lik.sex*prior.curr)))
+swtch[is.na(swtch)] <- F
 Xsex[swtch]<- 1-Xsex[swtch]
 psi.sex<-rbeta(1,.1+sum(Xsex[z==1]),.1+sum(z)-sum(Xsex[z==1]))
 
