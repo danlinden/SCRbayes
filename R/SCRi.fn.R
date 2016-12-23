@@ -745,7 +745,7 @@ if(m%%dumprate==0){
 print(out[m,])
 #write a file here not implemented yet
 out.tmp <- list(mcmchist=out,likelihood=LLout,call=call)
-save(out.tmp,file=paste0("out",version,"_",m,".Rdata")
+save(out.tmp,file=paste0("out",version,"_",m,".Rdata"))
 
 }
 m<-m+1
