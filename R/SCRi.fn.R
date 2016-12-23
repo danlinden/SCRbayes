@@ -2,7 +2,7 @@ SCRi.fn <-
 function(scrobj,
          ni=1100,burn=100,skip=2,nz=200,theta=NA,
          Msigma=1,Mb=0,Msex=0,Msexsigma = 0,Xeff=NULL,Xsex=NULL, ss.prob=NULL,
-coord.scale=5000,area.per.pixel=1,thinstatespace=1,maxNN=20,dumprate=1000){
+coord.scale=5000,area.per.pixel=1,thinstatespace=1,maxNN=20,dumprate=1000,version=1){
 
 # Added input vector ss.prob, which gives a proportional (RSF-like) weight to each node in the statespace
 
@@ -744,6 +744,9 @@ lam0, beta.behave, beta1,beta.sex,psi,psi.sex,sum(z),theta,beta.den,density)
 if(m%%dumprate==0){
 print(out[m,])
 #write a file here not implemented yet
+out.tmp <- list(mcmchist=out,likelihood=LLout,call=call)
+save(out.tmp,file=paste0("out",version,"_",m,".Rdata")
+
 }
 m<-m+1
 }
