@@ -791,7 +791,7 @@ out<- list(mcmchist=out,G=G,Gunscaled=Gunscaled,traplocs=traplocs,Sout=Sout,zout
 #class(out) <- c("scrfit","list")
 
 }
-
+stopCluster(cl)
 return(outlst)
 
 }
