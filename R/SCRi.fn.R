@@ -2,10 +2,10 @@ SCRi.fn <-
 function(scrobj,
          ni=1100,burn=100,skip=2,nz=200,theta=NA,
          Msigma=1,Mb=0,Msex=0,Msexsigma = 0,Xeff=NULL,Xsex=NULL, ss.prob=NULL,
-coord.scale=5000,area.per.pixel=1,thinstatespace=1,maxNN=20,dumprate=1000,version=1){
+coord.scale=1000,area.per.pixel=1,thinstatespace=1,maxNN=20,dumprate=1000,nc=1){
 
 # Added input vector ss.prob, which gives a proportional (RSF-like) weight to each node in the statespace
-
+browser()
 call <- match.call()
 
 traps<-scrobj$traps
@@ -261,6 +261,23 @@ centers2<-sample(1:nG,M-nind,replace=TRUE, prob=ss.prob)
 centers<-c(centers1,centers2)
 S<-G[centers,]   # initial locations for all M individuals
 
+# clean up objects no longer used
+rm(alive.trues,Yaug,arr.trues,Xeffnew,idx,msk2)
+gc()
+
+## Parallelize the operation (for Windows machines) ##
+
+require(parallel)
+require(doParallel)
+
+cl<-makeCluster(nc)
+registerDoParallel(cl)
+
+outlst <- foreach(ch=1:nc) %dopar% {
+
+#####3 Initial values start here for other parameters #####
+  
+  
 if(Msexsigma==0){
 bsigma <- rbeta(1,1,40)
 }
@@ -310,10 +327,10 @@ llvector.new
 
 
 
-trapgridbig<-traplocs[trapid,]   # streteches out the trap coord matrix
+#trapgridbig<-traplocs[trapid,]   # streteches out the trap coord matrix
 y1<-y==1
-c1<- (S[indid,1]-trapgridbig[,1])^2
-c2<- (S[indid,2]-trapgridbig[,2])^2
+c1<- (S[indid,1]-traplocs[trapid,1])^2
+c2<- (S[indid,2]-traplocs[trapid,2])^2
 
 gof.new<-gof.data<-rep(NA,(ni-burn)/skip)
 
@@ -615,8 +632,8 @@ newcenters<- NN[cbind(centers,newcenters)]
 qnew<- 1/numnn[centers]
 qold<- 1/numnn[newcenters]
 Sc<-G[newcenters,]
-c1c<- (Sc[indid,1]-trapgridbig[,1])^2
-c2c<- (Sc[indid,2]-trapgridbig[,2])^2
+c1c<- (Sc[indid,1]-traplocs[trapid,1])^2
+c2c<- (Sc[indid,2]-traplocs[trapid,2])^2
 
 if(Msexsigma==0)
 lp.sigmac<-Msigma*bsigma*(c1c+c2c)^theta
@@ -645,8 +662,8 @@ accept<- runif(M)<exp(likdiff)
 cat("accept rate: ",mean(accept),fill=TRUE)
 S[accept,]<-Sc[accept,]
 centers[accept]<-newcenters[accept]
-c1<- (S[indid,1]-trapgridbig[,1])^2
-c2<- (S[indid,2]-trapgridbig[,2])^2
+c1<- (S[indid,1]-traplocs[trapid,1])^2
+c2<- (S[indid,2]-traplocs[trapid,2])^2
 LM2[accept,]<-LM1[accept,]
 
 
@@ -746,7 +763,7 @@ if(m%%dumprate==0){
 print(out[m,])
 #write a file here not implemented yet
 out.tmp <- list(mcmchist=out,likelihood=LLout,call=call)
-save(out.tmp,file=paste0("./out/out",version,"_",m,".Rdata"))
+save(out.tmp,file=paste0("./out/out",ch,"_",m,".Rdata"))
 
 }
 m<-m+1
@@ -771,8 +788,10 @@ TRUE ) # JFG 10/15/13 edited so that psi.sex is included if Msexsigma = 1.
 
 out<- list(mcmchist=out,G=G,Gunscaled=Gunscaled,traplocs=traplocs,Sout=Sout,zout=zout, likelihood=LLout,statespace=statespace,gof.data=gof.data,gof.new=gof.new,call=call,parms2report=parms.2.report) # JFG edited to return the likelihood
 
-class(out) <- c("scrfit","list")
+#class(out) <- c("scrfit","list")
 
-return(out)
+}
+
+return(outlst)
 
 }
