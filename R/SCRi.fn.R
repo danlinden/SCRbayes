@@ -5,7 +5,7 @@ function(scrobj,
 coord.scale=1000,area.per.pixel=1,thinstatespace=1,maxNN=20,dumprate=1000,nc=1){
 
 # Added input vector ss.prob, which gives a proportional (RSF-like) weight to each node in the statespace
-browser()
+
 call <- match.call()
 
 traps<-scrobj$traps
