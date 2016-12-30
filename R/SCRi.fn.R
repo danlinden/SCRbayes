@@ -2,7 +2,8 @@ SCRi.fn <-
 function(scrobj,
          ni=1100,burn=100,skip=2,nz=200,theta=NA,
          Msigma=1,Mb=0,Msex=0,Msexsigma = 0,Xeff=NULL,Xsex=NULL, ss.prob=NULL,
-coord.scale=1000,area.per.pixel=1,thinstatespace=1,maxNN=20,dumprate=1000,nc=1){
+         coord.scale=1000,area.per.pixel=1,thinstatespace=1,maxNN=20,dumprate=1000,
+         nc=1,file.dump=F){
 
 # Added input vector ss.prob, which gives a proportional (RSF-like) weight to each node in the statespace
 
@@ -26,9 +27,9 @@ if( sum(names(captures) == c("trapid","individual","occasion")) != 3){
 
 
 
-if(   length(unique(captures[,2])) != length(min(captures[,2]):max(captures[,2])) ) {
+if(   length(unique(captures[,"individual"])) != length(min(captures[,"individual"]):max(captures[,"individual"])) ) {
  cat("Error: individuals not numbered sequentially, renumbering them now",fill=TRUE)
- captures[,2]<- as.numeric(factor(captures[,2]))
+ captures[,"individual"]<- as.numeric(factor(captures[,"individual"]))
 }
 
 
@@ -57,7 +58,7 @@ if(   length(unique(captures[,2])) != length(min(captures[,2]):max(captures[,2])
  Y<-captures
  traplocs<-traps[,2:3]
  MASK<-as.matrix(traps[,4:ncol(traps)])
- nind<-max(Y[,2])
+ nind<-max(Y[,"individual"])
  T<-dim(MASK)[2]
  M<-nind+nz   # total size of data set
  ntraps<-nrow(traplocs)
@@ -116,7 +117,7 @@ msk2<-as.vector(msk2)
 ###
 # expand the data to a 3-d array
 Ynew<-array(0,dim=c(nind,T,ntraps))
-Ynew[cbind(Y[,2],Y[,3],Y[,1])]<-1
+Ynew[cbind(Y[,"individual"],Y[,"occasion"],Y[,"trapid"])]<-1
 Y<-Ynew
 ###
 ### data augmentation
@@ -762,9 +763,10 @@ lam0, beta.behave, beta1,beta.sex,psi,psi.sex,sum(z),theta,beta.den,density)
 if(m%%dumprate==0){
 print(out[m,])
 #write a file here not implemented yet
+if(file.dump){
 out.tmp <- list(mcmchist=out,likelihood=LLout,call=call)
 save(out.tmp,file=paste0("./out/out",ch,"_",m,".Rdata"))
-
+}
 }
 m<-m+1
 }
@@ -789,6 +791,7 @@ TRUE ) # JFG 10/15/13 edited so that psi.sex is included if Msexsigma = 1.
 out<- list(mcmchist=out,G=G,Gunscaled=Gunscaled,traplocs=traplocs,Sout=Sout,zout=zout, likelihood=LLout,statespace=statespace,gof.data=gof.data,gof.new=gof.new,call=call,parms2report=parms.2.report) # JFG edited to return the likelihood
 
 #class(out) <- c("scrfit","list")
+return(out)
 
 }
 stopCluster(cl)
