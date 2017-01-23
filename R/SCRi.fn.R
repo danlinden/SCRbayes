@@ -3,10 +3,10 @@ function(scrobj,
          ni=1100,burn=100,skip=2,nz=200,theta=NA,
          Msigma=1,Mb=0,Msex=0,Msexsigma = 0,Xeff=NULL,Xsex=NULL, ss.prob=NULL,
          coord.scale=1000,area.per.pixel=1,thinstatespace=1,maxNN=20,dumprate=1000,
-         nc=1,file.dump=F){
+         nc=1,file.dump=F, density.prior = c("B","P")[1]){
 
 # Added input vector ss.prob, which gives a proportional (RSF-like) weight to each node in the statespace
-
+# browser()
 call <- match.call()
 
 traps<-scrobj$traps
@@ -68,10 +68,11 @@ if(   length(unique(captures[,"individual"])) != length(min(captures[,"individua
 ##################
 ##################
 totalarea<- nrow(statespace)*area.per.pixel
+  
+# thinned<- seq(1,nrow(statespace),thinstatespace)
+# statespace<-statespace[thinned,]
+# Xd<-Xd[thinned]
 
-thinned<- seq(1,nrow(statespace),thinstatespace)
-statespace<-statespace[thinned,]
-Xd<-Xd[thinned]
 goodbad<-statespace[,3]
 G<-statespace[,1:2]
 G<-G[goodbad==1,]
@@ -79,12 +80,12 @@ Gunscaled<-G
 Xd<- Xd[goodbad==1]
 nG<-nrow(G)
 
-new.area.per.pixel<- totalarea/nG
+totalarea1 <- nG*area.per.pixel
 
 # The following lines thin the statespace probability weights to match the thinned statespace
 #########################################################
 	if(!is.null(ss.prob)){
-		ss.prob = ss.prob[thinned]
+		#ss.prob = ss.prob[thinned]
 		ss.prob = ss.prob[goodbad==1]
 	}
 ##########################################################
@@ -291,26 +292,33 @@ if(is.na(theta)){
      theta<- .75
      update.theta<-TRUE
  }
-lam0 <- rgamma(1,0.15,scale=1)
+#lam0 <- rgamma(1,0.15,scale=1)
+lam0 <- runif(1,0.002,0.006)
 loglam0 <- log(lam0)
 beta.behave<-0
 beta.sex<-0
 # start beta1=0 so if there's no covariate this parameter is zeroed out
 beta1<-0
 lam0<-exp(loglam0)
-psi<-.5  # not a good starting values
+#psi<-.5  # not a good starting values
+
 psi.sex <- mean(Xsex,na.rm=TRUE)
-z<-c(rep(1,nind),rbinom(nz,1,psi))
+
 if(sum(sex.naflag)>0)
 Xsex[sex.naflag]<-rbinom(sum(sex.naflag),1,psi.sex) # modified 10/15/13 JFG - changed mean binom prob to mean of known pop. instead of .65
 
 if(is.null(Xd)){
       Xd<-rep(1,nG)
   }
-  beta.den<-0
+beta.den <- 0
 
+z<-c(rep(1,nind),rbinom(nz,1,.5))
+EN <- sum(z)
+psi <- EN/M
 
+beta0.den <- log((EN)/nG/area.per.pixel)
 
+  
 ###
 ###
 ##   initializing things and making utility funcs
@@ -335,8 +343,8 @@ c2<- (S[indid,2]-traplocs[trapid,2])^2
 
 gof.new<-gof.data<-rep(NA,(ni-burn)/skip)
 
-out<-matrix(NA,nrow=(ni-burn)/skip,ncol=14)
-dimnames(out)<-list(NULL,c("bsigma","sigma","bsigma2","sigma2","lam0","beta.behave","beta1(effort)","beta.sex","psi","psi.sex","Nsuper","theta","beta.density","D"))
+out<-matrix(NA,nrow=(ni-burn)/skip,ncol=16)
+dimnames(out)<-list(NULL,c("bsigma","sigma","bsigma2","sigma2","lam0","beta.behave","beta1(effort)","beta.sex","psi","psi.sex","Nsuper","theta","beta0.den","beta.den","D","EN"))
 zout<-matrix(NA,nrow=(ni-burn)/skip,ncol=M)
 Sout<-matrix(NA,nrow=(ni-burn)/skip,ncol=M)
 LLout<-matrix(NA, nrow=(ni-burn)/skip,ncol=2)
@@ -561,10 +569,90 @@ if(runif(1)< exp(sum(( (LM1[z==1,]-LM2[z==1,])%*%ones)))){
 # in S, whereas z[i]=0 are excess zeros in the data set
 # this is an application of Bayes rule to get Pr(z=1| y[i,,]=0)
 
+
 probz<- exp( rowsum(llvector[indid>nind],indid[indid>nind]) ) # only for nind+1...M
-probz<- (probz*psi )/(probz*psi + (1-psi))
+probz<- (probz*psi)/(probz*psi + (1-psi))
 z[(nind+1):M]<-rbinom(M-nind,1,probz)
-psi<-rbeta(1,1+sum(z),1+M-sum(z))
+
+if(density.prior=="B"){
+  
+  psi<-rbeta(1,1+sum(z),1+M-sum(z))
+  EN <- sum(z)
+  beta0.den <- log((EN)/nG/area.per.pixel)
+  
+} else {
+  
+  EN <- sum(area.per.pixel*exp(beta0.den + Xd*beta.den))
+
+  ll.beta <-  sum(((beta0.den + Xd[centers]*beta.den) - log(EN)) * z) +
+                       dbinom(sum(z), M, EN/M, log=T)
+  
+  beta0.den.c<- rnorm(1,beta0.den,.1)
+  
+  EN.cand <- sum(area.per.pixel*exp(beta0.den.c + Xd*beta.den))
+  
+  if(EN.cand < M){
+    ll.beta.c <-  sum(((beta0.den.c + Xd[centers]*beta.den) - log(EN.cand)) * z) +
+      dbinom(sum(z), M, EN.cand/M, log=T)
+    if(  runif(1)< exp( sum(ll.beta.c) - sum(ll.beta) ) ){
+      beta0.den <- beta0.den.c
+      EN <- EN.cand
+      ll.beta <- ll.beta.c
+    }
+  }
+  
+  ### This block of code updates a density covariate parameter
+  if(length(unique(Xd)) > 1){
+    
+    beta.den.c<- rnorm(1,beta.den,.25)
+    
+    EN.cand <- sum(area.per.pixel*exp(beta0.den + Xd*beta.den.c))
+    
+    if(EN.cand < M){
+      ll.beta.c <-  sum(((beta0.den + Xd[centers]*beta.den.c) - log(EN.cand)) * z) +
+        dbinom(sum(z), M, EN.cand/M, log=T)
+      if(  runif(1)< exp( sum(ll.beta.c) - sum(ll.beta) ) ){
+        beta.den <- beta.den.c
+        EN <- EN.cand
+        ll.beta <- ll.beta.c
+      }
+    }
+  }
+    
+  psi <- EN/M
+  
+  ## update z
+#   z.cand <- c(z[1:nind], 1-z[(nind+1):M]) ##ifelse(z[i]==0, 1, 0)
+#   ll.cand <- ll <- LM2
+#   ll.cand[z.cand==0,] <- 0
+#   ll[z==0,] <- 0
+#   
+#   prior.z <- dbinom(z, 1, psi, log=TRUE)
+#   prior.z.cand <- dbinom(z.cand, 1, psi, log=TRUE)
+#   
+#   accept <- runif(M) < exp( (rowSums(ll.cand) + prior.z.cand ) -
+#                               (rowSums(ll) + prior.z )) 
+#   z[accept] <- z.cand[accept]
+  
+  
+  ## update z
+#   z.cand <- 1-z[(nind+1):M] ##ifelse(z[i]==0, 1, 0)
+#   ll.cand <- ll <- LM2[(nind+1):M,]
+#   ll.cand[z.cand==0,] <- 0
+#   ll[z[(nind+1):M]==0,] <- 0
+#   
+#   prior.z <- dbinom(z[(nind+1):M], 1, psi, log=TRUE)
+#   prior.z.cand <- dbinom(z.cand, 1, psi, log=TRUE)
+#   
+#   accept <- runif(M) < exp( (rowSums(ll.cand) + prior.z.cand ) -
+#                               (rowSums(ll) + prior.z )) 
+#   z[(nind+1):M][accept] <- z.cand[accept]
+  
+  
+}
+
+
+
 
 ###
 ###  This updates SEX identifier  and sex ratio
@@ -652,8 +740,8 @@ likdiff[z==0]<-0   # all other things equal, this lines sets acceptance prob to 
 
 
 ### edits 7/23/2013
-logprior.new<-    Xd[newcenters]*beta.den
-logprior.old<-    Xd[centers]*beta.den
+logprior.new<-    beta0.den + Xd[newcenters]*beta.den
+logprior.old<-    beta0.den + Xd[centers]*beta.den
 
 #likdiff<-likdiff + log(qold/qnew)
 ### I think dimension of these is wrong......
@@ -667,17 +755,18 @@ c1<- (S[indid,1]-traplocs[trapid,1])^2
 c2<- (S[indid,2]-traplocs[trapid,2])^2
 LM2[accept,]<-LM1[accept,]
 
-
 ### This block of code updates a density covariate parameter
+if(length(unique(Xd)) > 1 & density.prior == "B"){
+
 beta.den.c<- rnorm(1,beta.den,.25)
 numerator.new <- exp(Xd*beta.den.c)
 loglik.new <- Xd[centers]*beta.den.c - log(sum(numerator.new))
 numerator.old <- exp(Xd*beta.den)
 loglik.old <-  Xd[centers]*beta.den - log(sum(numerator.old))
-if(  runif(1)< exp( sum(loglik.new) - sum(loglik.old) ) ){
- beta.den<-beta.den.c
+if(  runif(1)< (expm1( sum(loglik.new) - sum(loglik.old) )+1)){
+  beta.den<-beta.den.c
 }
-
+}
 
 ####
 ####
@@ -751,14 +840,14 @@ gof.new[m]<- sum(  (sqrt(gof.stats[,3])-sqrt(gof.stats[,4]))[z==1]^2)
 #####
 #####
 
-density<- sum(z)/totalarea
+density<- sum(z)/totalarea1
 
 zout[m,]<-z
 Sout[m,]<- centers
 # Compute the likelihood of the data given the model/parameter values
 LLout[m,]<- c(sum(logmu.array), n.nolik)#prod(c(mu.array))
 out[m,]<-c(bsigmatmp[1],sigmatmp[1],bsigmatmp[2],sigmatmp[2],
-lam0, beta.behave, beta1,beta.sex,psi,psi.sex,sum(z),theta,beta.den,density)
+lam0, beta.behave, beta1,beta.sex,psi,psi.sex,sum(z),theta,beta0.den,beta.den,density,EN)
 
 if(m%%dumprate==0){
 print(out[m,])
